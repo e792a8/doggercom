@@ -1,20 +1,24 @@
-[workspace]
-members = [
-]
 [package]
 name = "doggercom"
+description = "doggercom: dogcom implementation in Rust."
 authors = ["e792a8"]
-version = "0.0.0"
+version = "0.0.1"
 publish = false
 edition = "2021"
 autobins = false
 
-[lib]
-name = "c2rust_out"
-path = "c2rust-lib.rs"
-crate-type = ["staticlib", "rlib"]
 [[bin]]
-path = "main.rs"
-name = "main"
+name = "doggercom"
+
 [dependencies]
-libc= "0.2"
+anyhow = "1.0.89"
+bstr = "1.10.0"
+clap = { version = "4.5.18", features = ["derive"] }
+daemonize = "0.5.0"
+digest = "0.10.7"
+log = "0.4.22"
+md-5 = "0.10.6"
+md4 = "0.10.2"
+rand = "0.8.5"
+sha1 = "0.10.6"
+simplelog = "0.12.2"
