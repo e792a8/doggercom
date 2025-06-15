@@ -10,7 +10,7 @@ extern crate log;
 extern crate anyhow;
 
 use anyhow::Result;
-use auth::doggercom;
+use auth::Doggercom;
 use clap::{Parser, ValueEnum};
 use configparse::config_parse;
 use daemon::daemonize;
@@ -80,9 +80,8 @@ fn main() -> Result<()> {
     if args.enable_802_1x {
         try_smart_eaplogin()?;
     }
-    doggercom(&args, &config)?;
 
-    Ok(())
+    Doggercom::new(args, config)?.run()
 }
 
 fn try_smart_eaplogin() -> Result<()> {
