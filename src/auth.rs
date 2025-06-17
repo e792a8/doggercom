@@ -24,7 +24,8 @@ const NOT_ON_THIS_IP_MAC: u8 = 0x16;
 const MUST_USE_DHCP: u8 = 0x17;
 
 pub struct Doggercom {
-    pub args: Args,
+    pub arg_mode: ArgMode,
+    pub arg_eternal: bool,
     pub config: Config,
     pub sock: UdpSocket,
     pub dest_addr: SocketAddr,
@@ -378,7 +379,8 @@ impl Doggercom {
         sock.set_read_timeout(Some(Duration::from_secs(3)))?;
 
         Ok(Self {
-            args,
+            arg_mode: args.arg_mode.unwrap(),
+            arg_eternal: args.eternal,
             config,
             sock,
             dest_addr,
@@ -388,13 +390,13 @@ impl Doggercom {
 
     pub fn run(&mut self) -> Result<()> {
         let try_times = 5;
-        match self.args.arg_mode {
+        match self.arg_mode {
             ArgMode::DHCP => {
                 let mut login_failed_attempts = 0u32;
                 let mut try_jlu_version = false;
                 let mut try_cnt = 0u32;
                 while try_cnt < try_times {
-                    if !self.args.eternal {
+                    if !self.arg_eternal {
                         try_cnt += 1;
                     }
                     let mut auth_info = [0u8; 16];
@@ -453,7 +455,7 @@ impl Doggercom {
                     {
                         warn!("PPPoE challenge failed: {err}. Retrying.");
                         login_first = true;
-                        if !self.args.eternal {
+                        if !self.arg_eternal {
                             try_counter += 1;
                         }
                         if try_counter >= try_times {

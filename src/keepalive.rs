@@ -114,7 +114,7 @@ impl Doggercom {
         keepalive_2_packet[8] = 0x2f;
         keepalive_2_packet[9] = 0x12;
         if type_0 == 3 {
-            match self.args.arg_mode {
+            match self.arg_mode {
                 ArgMode::DHCP => {
                     let host_ip = self
                         .config
@@ -144,7 +144,7 @@ impl Doggercom {
         let mut recv_packet = [0u8; 1024];
         let mut tail = [0u8; 4];
         if *first {
-            match self.args.arg_mode {
+            match self.arg_mode {
                 ArgMode::PPPoE => {
                     self.keepalive_2_packetbuilder(
                         &mut keepalive_2_packet,
@@ -184,7 +184,7 @@ impl Doggercom {
         }
         *first = false;
         keepalive_2_packet = [0; 40];
-        match self.args.arg_mode {
+        match self.arg_mode {
             ArgMode::PPPoE => {
                 self.keepalive_2_packetbuilder(
                     &mut keepalive_2_packet,
@@ -218,7 +218,7 @@ impl Doggercom {
         );
         tail.copy_from_slice(&recv_packet[16..20]);
         keepalive_2_packet = [0; 40];
-        match self.args.arg_mode {
+        match self.arg_mode {
             ArgMode::PPPoE => {
                 self.keepalive_2_packetbuilder(
                     &mut keepalive_2_packet,
