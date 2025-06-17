@@ -29,6 +29,12 @@ pub struct Config {
     pub keep_alive2_flag: u8,
 }
 
+pub fn preconfig_variant_jlu() -> Config {
+    let config_content = include_bytes!("preconfig-jlu.conf");
+    let mut config_reader = BufReader::new(config_content.as_ref());
+    do_config_parse(Config::default(), &mut config_reader).unwrap()
+}
+
 fn parse_bool(v: &[u8]) -> bool {
     match str::parse(unsafe { from_utf8_unchecked(&v.to_ascii_lowercase()) }) {
         Ok(x) => x,
@@ -69,8 +75,7 @@ fn parse_mac(v: &[u8]) -> [u8; 6] {
     ret
 }
 
-pub fn do_config_parse(config_reader: &mut impl BufRead) -> Result<Config> {
-    let mut config = Config::default();
+pub fn do_config_parse(mut config: Config, config_reader: &mut impl BufRead) -> Result<Config> {
     for ln in config_reader.split(b'\n').map(|l| l.unwrap()) {
         let ln = BString::from(ln);
         let (k, v) = ln.split_at(
@@ -104,15 +109,15 @@ pub fn do_config_parse(config_reader: &mut impl BufRead) -> Result<Config> {
     Ok(config)
 }
 
-pub fn config_parse(filepath: &PathBuf) -> Result<Config> {
+pub fn config_parse(config: Config, filepath: &PathBuf) -> Result<Config> {
     let config_file = File::open(filepath).context(format!(
         "Cannot open config file: {}",
         filepath.to_string_lossy()
     ))?;
     let mut config_reader = BufReader::new(config_file);
-    let config_ret = do_config_parse(&mut config_reader)?;
+    let config = do_config_parse(config, &mut config_reader)?;
 
-    Ok(config_ret)
+    Ok(config)
 }
 
 #[cfg(test)]
@@ -143,7 +148,7 @@ keep_alive2_flag = '\xd8'
 "#;
         let config_content = config_content.trim_ascii_start();
         let mut config_reader = BufReader::new(config_content);
-        let config = do_config_parse(&mut config_reader).unwrap();
+        let config = do_config_parse(Config::default(), &mut config_reader).unwrap();
         assert_eq!(
             config,
             Config {
@@ -165,6 +170,41 @@ keep_alive2_flag = '\xd8'
                 keepalive1_mod: true,
                 pppoe_flag: 0x18,
                 keep_alive2_flag: 0xd8
+            }
+        );
+    }
+
+    #[test]
+    fn variant_jlu_test() {
+        let config_content = br#"
+username = 'a'
+password = 'a'
+mac = 0xb888e3051680
+host_ip = '10.30.22.17'
+"#;
+        let config_content = config_content.trim_ascii_start();
+        let mut config_reader = BufReader::new(config_content);
+        let config = preconfig_variant_jlu();
+        let config = do_config_parse(config, &mut config_reader).unwrap();
+        assert_eq!(
+            config,
+            Config {
+                username: b"a".into(),
+                password: b"a".into(),
+                mac: *b"\xb8\x88\xe3\x05\x16\x80",
+                host_ip: b"10.30.22.17".into(),
+                host_name: b"localhost".into(),
+                host_os: b"Windows 10".into(),
+                server: b"10.100.61.3".into(),
+                primary_dns: b"10.10.10.10".into(),
+                dhcp_server: b"0.0.0.0".into(),
+                controlcheckstatus: 0x20,
+                adapternum: 0x03,
+                ipdog: 0x01,
+                auth_version: *b"\x68\x00",
+                keep_alive_version: *b"\xdc\x02",
+                ror_version: true,
+                ..Default::default()
             }
         );
     }

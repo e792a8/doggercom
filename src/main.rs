@@ -10,12 +10,14 @@ extern crate log;
 extern crate anyhow;
 
 use anyhow::Result;
-use auth::doggercom;
-use clap::{Parser, ValueEnum};
+use auth::Doggercom;
+use clap::{ArgGroup, Parser, ValueEnum};
 use configparse::config_parse;
 use daemon::daemonize;
 use debug::init_logging;
 use std::path::PathBuf;
+
+use crate::configparse::{preconfig_variant_jlu, Config};
 
 #[derive(Clone, PartialEq, ValueEnum)]
 pub enum ArgMode {
@@ -25,12 +27,24 @@ pub enum ArgMode {
     PPPoE,
 }
 
+#[derive(Clone, PartialEq, ValueEnum)]
+pub enum ArgVariant {
+    #[value(name = "jlu")]
+    JLU,
+}
+
 #[derive(Parser)]
 #[command(about, version)]
+#[clap(group(
+    ArgGroup::new("exclusive_args")
+        .required(true)
+        .multiple(false)
+        .args(&["MODE", "VARIANT"])
+))]
 pub struct Args {
     /// Set your dogcom mode
     #[arg(value_enum, short = 'm', long = "mode", name = "MODE")]
-    pub arg_mode: ArgMode,
+    pub arg_mode: Option<ArgMode>,
 
     /// Import configuration file
     #[arg(short = 'c', long = "conf", name = "FILEPATH")]
@@ -64,10 +78,14 @@ pub struct Args {
     /// Set verbose flag
     #[arg(short = 'v', long = "verbose")]
     pub verbose: bool,
+
+    /// Preconfigured variant
+    #[arg(short = 't', long = "variant", name = "VARIANT")]
+    pub variant: Option<ArgVariant>,
 }
 
 fn main() -> Result<()> {
-    let args = Args::parse();
+    let mut args = Args::parse();
 
     if let Err(err) = init_logging(&args) {
         println!("Logging initialization error: {err}");
@@ -76,13 +94,20 @@ fn main() -> Result<()> {
     if args.daemon {
         daemonize();
     }
-    let config = config_parse(&args.conf)?;
+
+    let config = match args.variant {
+        Some(ArgVariant::JLU) => {
+            args.arg_mode = Some(ArgMode::DHCP);
+            preconfig_variant_jlu()
+        }
+        None => Config::default(),
+    };
+    let config = config_parse(config, &args.conf)?;
     if args.enable_802_1x {
         try_smart_eaplogin()?;
     }
-    doggercom(&args, &config)?;
 
-    Ok(())
+    Doggercom::new(args, config)?.run()
 }
 
 fn try_smart_eaplogin() -> Result<()> {
