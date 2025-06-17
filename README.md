@@ -20,7 +20,7 @@ Options:
 
 Config file is compatible with [drcom-generic](https://github.com/drcoms/drcom-generic).
 
-#### Example:
+#### Example
 
 ```bash
 $ doggercom -m dhcp -c dogcom.conf
@@ -30,4 +30,14 @@ $ doggercom -m pppoe -c dogcom.conf -x # currently not implemented
 $ doggercom -m pppoe -c dogcom.conf -e # eternal doggercoming
 $ doggercom -m pppoe -c dogcom.conf -v
 $ doggercom -m dhcp -c dogcom.conf -b 10.2.3.12 -v
+```
+
+#### Build
+
+To build a statically linked binary for some target (armv7-unknown-linux-gnueabihf for me):
+
+```bash
+# requires armv7l-linux-gnueabihf-gcc
+# rustup target add armv7-unknown-linux-gnueabihf
+RUSTFLAGS='-C linker=armv7l-linux-gnueabihf-gcc -C target-feature=+crt-static' cargo build --release --target=armv7-unknown-linux-gnueabihf
 ```
