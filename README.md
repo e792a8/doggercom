@@ -4,6 +4,7 @@
 
 - PPPoE mode is untested
 - 802.1x is unimplemented
+- NEW! auto periodical relogin to mitigate drcom mess
 - NEW! specifying preconfigured variant (currently supports JLU)
 
 ```
@@ -18,6 +19,7 @@ Options:
      -x, --802.1x             Enable 802.1x (unimplemented)
      -e, --eternal            Set eternal flag
      -v, --verbose            Set verbose flag
+NEW! -r, --relogin <MINS>     Relogin interval
 NEW! -t, --variant <VARIANT>  Preconfigured variant [possible values: jlu]
      -h, --help               Print help
      -V, --version            Print version
@@ -40,11 +42,15 @@ $ doggercom -m pppoe -c dogcom.conf -e # eternal doggercoming
 $ doggercom -m pppoe -c dogcom.conf -v
 ```
 
+## Relogin
+
+In some cases when keeping logged in for long, the network may fall into a somehow corrupted state while the keepalive packages show nothing abnormal. Periodically relogin mitigates this. Set relogin interval with `-r <MINS>`.
+
 ## Preconfigured Variant
 
 Currently supports JLU. The [embedded preconfiguration values](src/preconfig-jlu.conf) come from [drcoms/jlu-drcom-client/jlu-drcom-py3](https://github.com/drcoms/jlu-drcom-client/blob/2ba09ce24041c4ab7021ddbc07a366e9ae3e1c5d/jlu-drcom-py3/newclinet-py3.py).
 
-By specifying `-t jlu`, the `-m` should be omitted and the configuration file can be reduced:
+Specifying `-t jlu` indicates `-m dhcp -r 60` (can be overriden if explicitly specified) and some preset config values. Simply run `doggercom -t jlu -c your.conf` with a short config file:
 
 ```text
 username = 'your-username'
@@ -53,7 +59,7 @@ mac = 0xMACADDRESS
 host_ip = 'your.ip.addr.ess'
 ```
 
-Note that values specified in the config file will override preconfigured ones.
+Values explicitly specified in the config file will override preconfigured ones.
 
 ## Build
 

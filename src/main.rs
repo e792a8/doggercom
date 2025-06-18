@@ -38,7 +38,7 @@ pub enum ArgVariant {
 #[clap(group(
     ArgGroup::new("exclusive_args")
         .required(true)
-        .multiple(false)
+        .multiple(true)
         .args(&["MODE", "VARIANT"])
 ))]
 pub struct Args {
@@ -79,6 +79,12 @@ pub struct Args {
     #[arg(short = 'v', long = "verbose")]
     pub verbose: bool,
 
+    /// Relogin interval
+    ///
+    /// in minutes; 0 = never; default = never
+    #[arg(short = 'r', long = "relogin", name = "MINS")]
+    pub relogin: Option<u64>,
+
     /// Preconfigured variant
     #[arg(short = 't', long = "variant", name = "VARIANT")]
     pub variant: Option<ArgVariant>,
@@ -97,10 +103,15 @@ fn main() -> Result<()> {
 
     let config = match args.variant {
         Some(ArgVariant::JLU) => {
-            args.arg_mode = Some(ArgMode::DHCP);
+            args.arg_mode = args.arg_mode.or(Some(ArgMode::DHCP));
+            args.relogin = args.relogin.or(Some(60));
             preconfig_variant_jlu()
         }
         None => Config::default(),
+    };
+    args.relogin = match args.relogin {
+        Some(x) if x > 0 => Some(x),
+        _ => None,
     };
     let config = config_parse(config, &args.conf)?;
     if args.enable_802_1x {

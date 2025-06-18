@@ -8,7 +8,7 @@ use std::{
     io,
     net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket},
     thread::sleep,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 const CHECK_MAC: u8 = 0x01;
@@ -26,6 +26,8 @@ const MUST_USE_DHCP: u8 = 0x17;
 pub struct Doggercom {
     pub arg_mode: ArgMode,
     pub arg_eternal: bool,
+    pub arg_relogin: Option<Duration>,
+    pub last_login: Option<Instant>,
     pub config: Config,
     pub sock: UdpSocket,
     pub dest_addr: SocketAddr,
@@ -378,9 +380,12 @@ impl Doggercom {
         let sock = UdpSocket::bind((addr, port))?;
         sock.set_read_timeout(Some(Duration::from_secs(3)))?;
 
+        debug!("Relogin interval: {:?}", args.relogin);
         Ok(Self {
             arg_mode: args.arg_mode.unwrap(),
             arg_eternal: args.eternal,
+            arg_relogin: args.relogin.map(|m| Duration::from_secs(60 * m)),
+            last_login: None,
             config,
             sock,
             dest_addr,
@@ -415,6 +420,8 @@ impl Doggercom {
                         sleep(Duration::from_secs(3));
                         continue;
                     }
+                    try_cnt = 0;
+                    self.last_login = Some(Instant::now());
                     let mut keepalive_counter = 0u8;
                     let mut keepalive_try_counter = 0;
                     let mut first = true;
@@ -434,6 +441,20 @@ impl Doggercom {
                         }
                         debug!("Keepalive in loop.");
                         sleep(Duration::from_secs(20));
+                        if let Some(relogin) = self.arg_relogin {
+                            let last_login = self.last_login.unwrap();
+                            let now = Instant::now();
+                            if now - last_login > relogin {
+                                info!("Relogin time reached, relogging in.");
+                                self.last_login = None;
+                                break;
+                            } else {
+                                debug!(
+                                    "Next relogin in {} minutes.",
+                                    (last_login + relogin - now).as_secs() / 60
+                                );
+                            }
+                        }
                     }
                 }
             }

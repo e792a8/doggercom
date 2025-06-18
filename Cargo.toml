@@ -2,7 +2,7 @@
 name = "doggercom"
 description = "doggercom: dogcom implementation in Rust."
 authors = ["e792a8"]
-version = "0.1.0"
+version = "0.1.1"
 publish = false
 edition = "2021"
 autobins = false
