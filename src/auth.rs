@@ -403,40 +403,37 @@ impl Doggercom {
                     if let Err(err) = self.dhcp_challenge() {
                         warn!("DHCP challenge failed: {err}. Retrying.");
                         sleep(Duration::from_secs(3));
-                    } else {
-                        sleep(Duration::from_secs_f32(0.2));
-                        if login_failed_attempts > 2 {
-                            try_jlu_version = true;
-                        }
-                        if let Err(err) = self.dhcp_login(&mut auth_info, try_jlu_version) {
-                            login_failed_attempts += 1;
-                            warn!("DHCP Login failed: {err}. Retrying.");
-                            sleep(Duration::from_secs(3));
-                        } else {
-                            let mut keepalive_counter = 0u8;
-                            let mut keepalive_try_counter = 0;
-                            let mut first = true;
-                            loop {
-                                if let Err(err) = self.keepalive_1(&auth_info) {
-                                    warn!("Keepalive1 error: {err}");
-                                    if keepalive_try_counter > 5 {
-                                        break;
-                                    }
-                                    keepalive_try_counter += 1;
-                                    continue;
-                                } else {
-                                    sleep(Duration::from_secs_f32(0.2));
-                                    if let Err(err) =
-                                        self.keepalive_2(&mut keepalive_counter, &mut first, 0)
-                                    {
-                                        warn!("Keepalive1 error: {err}");
-                                        continue;
-                                    }
-                                    debug!("Keepalive in loop.");
-                                    sleep(Duration::from_secs(20));
-                                }
+                        continue;
+                    }
+                    sleep(Duration::from_secs_f32(0.2));
+                    if login_failed_attempts > 2 {
+                        try_jlu_version = true;
+                    }
+                    if let Err(err) = self.dhcp_login(&mut auth_info, try_jlu_version) {
+                        login_failed_attempts += 1;
+                        warn!("DHCP Login failed: {err}. Retrying.");
+                        sleep(Duration::from_secs(3));
+                        continue;
+                    }
+                    let mut keepalive_counter = 0u8;
+                    let mut keepalive_try_counter = 0;
+                    let mut first = true;
+                    loop {
+                        if let Err(err) = self.keepalive_1(&auth_info) {
+                            warn!("Keepalive1 error: {err}");
+                            if keepalive_try_counter > 5 {
+                                break;
                             }
+                            keepalive_try_counter += 1;
+                            continue;
                         }
+                        sleep(Duration::from_secs_f32(0.2));
+                        if let Err(err) = self.keepalive_2(&mut keepalive_counter, &mut first, 0) {
+                            warn!("Keepalive1 error: {err}");
+                            continue;
+                        }
+                        debug!("Keepalive in loop.");
+                        sleep(Duration::from_secs(20));
                     }
                 }
             }
