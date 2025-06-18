@@ -65,9 +65,8 @@ impl Doggercom {
         Ok(())
     }
 
-    fn dhcp_login(&self, auth_info: &mut [u8; 16], try_jlu_version: bool) -> Result<()> {
+    fn dhcp_login(&self, auth_info: &mut [u8; 16]) -> Result<()> {
         let mut length_padding = 0usize;
-        let mut jlu_padding = 0usize;
         let config = &self.config;
         let pwd = &config.password[..];
         let uname = &config.username[..];
@@ -87,13 +86,6 @@ impl Doggercom {
 
         if pwd.len() > 8 {
             length_padding = pwd.len() - 8;
-            if try_jlu_version {
-                info!("Start JLU mode.");
-                if pwd.len() != 16 {
-                    jlu_padding = pwd.len() / 4;
-                }
-                length_padding = 20usize + pwd.len() + jlu_padding;
-            }
         }
         let login_packet_size = if config.ror_version {
             338usize + length_padding
@@ -145,47 +137,24 @@ impl Doggercom {
         login_packet[110..110 + host_name.len()].copy_from_slice(host_name);
         login_packet[142..146].copy_from_slice(&primary_dns);
         login_packet[146..150].copy_from_slice(&dhcp_server);
-        let mut os_version_info_size: [u8; 4] = [0x94, 0, 0, 0];
-        let mut osmajor: [u8; 4] = [0x05, 0, 0, 0];
-        let mut osminor: [u8; 4] = [0x01, 0, 0, 0];
-        let mut osbuild: [u8; 4] = [0x28, 0x0a, 0, 0];
-        let mut platform_id: [u8; 4] = [0x02, 0, 0, 0];
-        if try_jlu_version {
-            os_version_info_size[0] = 0x94;
-            osmajor[0] = 0x06;
-            osminor[0] = 0x02;
-            osbuild[0] = 0xf0;
-            osbuild[1] = 0x23;
-            platform_id[0] = 0x02;
-            let service_pack: [u8; 40] = [
-                0x33, 0x64, 0x63, 0x37, 0x39, 0x66, 0x35, 0x32, 0x31, 0x32, 0x65, 0x38, 0x31, 0x37,
-                0x30, 0x61, 0x63, 0x66, 0x61, 0x39, 0x65, 0x63, 0x39, 0x35, 0x66, 0x31, 0x64, 0x37,
-                0x34, 0x39, 0x31, 0x36, 0x35, 0x34, 0x32, 0x62, 0x65, 0x37, 0x62, 0x31,
-            ];
-            let hostname: [u8; 9] = [0x44, 0x72, 0x43, 0x4f, 0x4d, 0x00, 0xcf, 0x07, 0x68];
-            login_packet[182..191].copy_from_slice(&hostname);
-            login_packet[246..286].copy_from_slice(&service_pack);
-        }
+        let os_version_info_size: [u8; 4] = [0x94, 0, 0, 0];
+        let osmajor: [u8; 4] = [0x05, 0, 0, 0];
+        let osminor: [u8; 4] = [0x01, 0, 0, 0];
+        let osbuild: [u8; 4] = [0x28, 0x0a, 0, 0];
+        let platform_id: [u8; 4] = [0x02, 0, 0, 0];
         login_packet[162..162 + 4].copy_from_slice(&os_version_info_size);
         login_packet[166..170].copy_from_slice(&osmajor);
         login_packet[170..174].copy_from_slice(&osminor);
         login_packet[174..178].copy_from_slice(&osbuild);
         login_packet[178..182].copy_from_slice(&platform_id);
-        if !try_jlu_version {
-            login_packet[182..182 + host_os.len()].copy_from_slice(host_os);
-        }
+        login_packet[182..182 + host_os.len()].copy_from_slice(host_os);
         login_packet[310..312].copy_from_slice(&config.auth_version);
         let mut counter = 312usize;
         let mut ror_padding = 0usize;
         if pwd.len() <= 8 {
             ror_padding = 8 - pwd.len();
-        } else {
-            if (pwd.len() - 8) % 2 != 0 {
-                ror_padding = 1;
-            }
-            if try_jlu_version {
-                ror_padding = jlu_padding;
-            }
+        } else if (pwd.len() - 8) % 2 != 0 {
+            ror_padding = 1;
         }
         if config.ror_version {
             md5_a.copy_from_slice(&Md5::digest(&md5_a_str));
@@ -222,10 +191,6 @@ impl Doggercom {
         login_packet[counter + 8..counter + 14].copy_from_slice(&config.mac);
         login_packet[counter + ror_padding + 14] = 0xe9;
         login_packet[counter + ror_padding + 15] = 0x13;
-        if try_jlu_version {
-            login_packet[counter + ror_padding + 14] = 0x60;
-            login_packet[counter + ror_padding + 15] = 0xa2;
-        }
 
         self.send(&login_packet)?;
         debug!("[Login sent] {}", DisplayBytes(login_packet));
@@ -397,8 +362,6 @@ impl Doggercom {
         let try_times = 5;
         match self.arg_mode {
             ArgMode::DHCP => {
-                let mut login_failed_attempts = 0u32;
-                let mut try_jlu_version = false;
                 let mut try_cnt = 0u32;
                 while try_cnt < try_times {
                     if !self.arg_eternal {
@@ -411,11 +374,7 @@ impl Doggercom {
                         continue;
                     }
                     sleep(Duration::from_secs_f32(0.2));
-                    if login_failed_attempts > 2 {
-                        try_jlu_version = true;
-                    }
-                    if let Err(err) = self.dhcp_login(&mut auth_info, try_jlu_version) {
-                        login_failed_attempts += 1;
+                    if let Err(err) = self.dhcp_login(&mut auth_info) {
                         warn!("DHCP Login failed: {err}. Retrying.");
                         sleep(Duration::from_secs(3));
                         continue;
