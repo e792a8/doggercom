@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod configparse;
+#[cfg(not(windows))]
 pub mod daemon;
 pub mod debug;
 pub mod keepalive;
@@ -13,6 +14,7 @@ use anyhow::Result;
 use auth::Doggercom;
 use clap::{ArgGroup, Parser, ValueEnum};
 use configparse::config_parse;
+#[cfg(not(windows))]
 use daemon::daemonize;
 use debug::init_logging;
 use std::path::PathBuf;
@@ -64,6 +66,7 @@ pub struct Args {
     pub log: Option<PathBuf>,
 
     /// Set daemon flag
+    #[cfg(not(windows))]
     #[arg(short = 'd', long = "daemon")]
     pub daemon: bool,
 
@@ -97,6 +100,7 @@ fn main() -> Result<()> {
         println!("Logging initialization error: {err}");
     }
 
+    #[cfg(not(windows))]
     if args.daemon {
         daemonize();
     }

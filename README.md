@@ -15,7 +15,7 @@ Options:
      -c, --conf <FILEPATH>    Import configuration file
      -b, --bindip <IPADDR>    Bind your ip address [default: 0.0.0.0]
      -l, --log <LOGPATH>      Specify log file
-     -d, --daemon             Set daemon flag
+     -d, --daemon             Set daemon flag (unimplemented on Windows)
      -x, --802.1x             Enable 802.1x (unimplemented)
      -e, --eternal            Set eternal flag
      -v, --verbose            Set verbose flag
