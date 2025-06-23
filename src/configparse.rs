@@ -36,7 +36,8 @@ pub fn preconfig_variant_jlu() -> Config {
 }
 
 fn parse_bool(v: &[u8]) -> bool {
-    match str::parse(unsafe { from_utf8_unchecked(&v.to_ascii_lowercase()) }) {
+    let v = v.to_ascii_lowercase();
+    match str::parse(unsafe { from_utf8_unchecked(&v) }) {
         Ok(x) => x,
         Err(_) => panic!("Parse error"),
     }
